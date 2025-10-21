@@ -30,7 +30,6 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
     with MediaQueryMixin {
   final _soLoud = SoLoud.instance;
   final _recorder = Recorder.instance;
-  final _dataSource = ValueNotifier(DataSources.soloud);
   Media? _selectedMedia;
   AudioSource? _audioSource;
   SoundHandle? _handle;
@@ -43,13 +42,17 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
   }
 
   Future<void> _init() async {
-    await _soLoud.init(bufferSize: 1024, channels: Channels.stereo);
-    _soLoud.setVisualizationEnabled(true);
-    await _recorder.init(
-      sampleRate: 44100,
-      format: PCMFormat.f32le,
-      channels: RecorderChannels.mono,
-    );
+    try {
+      await _soLoud.init(bufferSize: 1024, channels: Channels.stereo);
+      _soLoud.setVisualizationEnabled(true);
+      await _recorder.init(
+        sampleRate: 44100,
+        format: PCMFormat.f32le,
+        channels: RecorderChannels.mono,
+      );
+    } catch (e) {
+      log('Init: $e');
+    }
   }
 
   Future<void> _play(String sourcePath) async {
@@ -58,16 +61,17 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
       _audioSource = await _soLoud.loadFile(sourcePath, mode: LoadMode.memory);
       _handle = await _soLoud.play(_audioSource!);
     } on SoLoudNotInitializedException catch (e) {
-      log(e.toString());
+      log('Audio Play: $e');
+    } finally {
+      ref.read(playPauseProvider.notifier).setValue(true);
+      ref
+          .read(audioProgressProvider.notifier)
+          .startTracking(
+            soLoud: _soLoud,
+            handle: _handle!,
+            duration: _soLoud.getLength(_audioSource!),
+          );
     }
-    ref.read(playPauseProvider.notifier).setValue(true);
-    ref
-        .read(audioProgressProvider.notifier)
-        .startTracking(
-          soLoud: _soLoud,
-          handle: _handle!,
-          duration: _soLoud.getLength(_audioSource!),
-        );
   }
 
   Future<void> _recordUserAudio() async {
@@ -85,7 +89,11 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
   }
 
   Future<void> _onButtonClickPlay() async {
-    await _soLoud.play(await _soLoud.loadAsset('assets/sounds/sound1.wav'));
+    try {
+      await _soLoud.play(await _soLoud.loadAsset('assets/sounds/sound1.wav'));
+    } catch (e) {
+      log('Click Sound: $e');
+    }
   }
 
   void _seekAudio({required isForward}) {
@@ -129,25 +137,20 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
               children: [
                 SizedBox(
                   height: size.height * 0.35,
-                  child: ValueListenableBuilder(
-                    valueListenable: _dataSource,
-                    builder: (_, value, _) {
-                      return AudioFlux(
-                        dataSource: value,
-                        fluxType: FluxType.waveform,
-                        modelParams: ModelParams(
-                          audioScale: 1,
-                          backgroundColor: Colors.blueGrey,
-                          barColor: Colors.white70,
-                          waveformParams: WaveformPainterParams(),
-                          shaderParams: ShaderParams(
-                            shaderName: 'Frequency Visualization',
-                            shaderPath:
-                                'assets/shaders/frequency_visualization.frag',
-                          ),
-                        ),
-                      );
-                    },
+                  child: AudioFlux(
+                    dataSource: DataSources.soloud,
+                    fluxType: FluxType.waveform,
+                    modelParams: ModelParams(
+                      audioScale: 1,
+                      backgroundColor: Colors.blueGrey,
+                      barColor: Colors.white70,
+                      waveformParams: WaveformPainterParams(),
+                      shaderParams: ShaderParams(
+                        shaderName: 'Frequency Visualization',
+                        shaderPath:
+                            'assets/shaders/frequency_visualization.frag',
+                      ),
+                    ),
                   ),
                 ),
                 PlayerWidget(
@@ -240,10 +243,9 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
                           .last,
                       path: _recordedFilePath!,
                     );
-                    _dataSource.value = DataSources.recorder;
-                    await _play(_recordedFilePath!);
                     if (!mounted) return;
                     setState(() {});
+                    await _play(_recordedFilePath!);
                   },
                   child: Text('Play Audio'),
                 ),
