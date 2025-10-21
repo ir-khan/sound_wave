@@ -80,7 +80,7 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
       _recorder.start();
       _recorder.startRecording(completeFilePath: _recordedFilePath!);
     } catch (e) {
-      log(e.toString());
+      log('Record Audio: $e');
     }
   }
 
@@ -204,7 +204,7 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
               await HapticFeedback.vibrate();
               ref.read(mediaListProvider.notifier).pickMedia();
             },
-            child: Text('Select Media'),
+            child: Text('Select Audio'),
           ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
