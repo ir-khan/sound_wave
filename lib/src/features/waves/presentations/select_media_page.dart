@@ -96,6 +96,7 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
     }
   }
 
+  /// TODO ( Izn ur Rehman ) : Specify types of Variable in each and every case
   void _seekAudio({required isForward}) {
     if (_handle == null || _audioSource == null) return;
     final currentPosition = _soLoud.getPosition(_handle!);
@@ -135,6 +136,7 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
           if (_selectedMedia != null)
             Column(
               children: [
+                /// TODO ( Izn ur Rehman ) : The Audio Flux is not Displaying
                 SizedBox(
                   height: size.height * 0.35,
                   child: AudioFlux(
@@ -156,6 +158,7 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
                 PlayerWidget(
                   media: _selectedMedia!,
                   onTapSkipPrevious: (value) {
+                    /// TODO ( Izn ur Rehman ) : If I started a single file and click on previous button the audio is not getting restarted
                     _onButtonClickPlay();
                     final index = media.indexOf(value);
                     if (index == 0) return;
@@ -194,6 +197,7 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
               ],
             ),
           if (media.isEmpty)
+            /// TODO ( Izn ur Rehman ) : Optimize this widget tree
             SizedBox(
               width: size.width,
               child: Text(
@@ -261,6 +265,8 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
                     selected: _selectedMedia == med,
                     selectedColor: Colors.red,
                     onTap: () async {
+                      /// TODO ( Izn ur Rehman ) : The audio is not getting played when I tapped on a selected file
+                      /// It gives me this error : SoLoudFileLoadFailedException: File found, but could not be loaded! Could be a permission error or the file is corrupted. (on the C++ side).
                       await HapticFeedback.vibrate();
                       _onButtonClickPlay();
                       _selectedMedia = med;
@@ -302,3 +308,9 @@ Future<String> _getPathToStorage() async {
   final tempDir = await getTemporaryDirectory();
   return tempDir.path;
 }
+
+/// TODO ( Izn ur Rehman ) : It does not auto play the second audio after completion of First video
+/// TODO ( Izn ur Rehman ) : The Audio is Finished but the Play Pause icon is still indicates that audio is still playing
+/// TODO ( Izn ur Rehman ) : Create a provider that will responsible for Recording
+/// TODO ( Izn ur Rehman ) : Create a Provider That will responsible for Playing Audio and all it's functionalities
+///

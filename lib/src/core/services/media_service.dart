@@ -16,6 +16,7 @@ class MediaService {
       final files = <XFile>[];
       for (final file in result.files) {
         if (allowedExtensions.contains(file.extension)) {
+          /// TODO ( Izn ur Rehman ) : Fix this
           files.add(XFile(file.path!, name: file.name));
         }
       }

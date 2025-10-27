@@ -16,6 +16,7 @@ class AudioProgressBar extends ConsumerWidget {
 
     return Row(
       children: [
+        /// TODO ( Izn ur Rehman ) : Make it explainable also If the Audio is more than 1 hour then we will have an issue here
         Padding(
           padding: const EdgeInsets.only(left: 5.0),
           child: Text(position.toString().substring(2, 7)),
@@ -29,6 +30,7 @@ class AudioProgressBar extends ConsumerWidget {
             allowedInteraction: SliderInteraction.slideThumb,
           ),
         ),
+        /// TODO ( Izn ur Rehman ) : Make it explainable also If the Audio is more than 1 hour then we will have an issue here
         Padding(
           padding: const EdgeInsets.only(right: 5.0),
           child: Text(duration.toString().substring(2, 7)),
