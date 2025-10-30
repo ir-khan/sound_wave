@@ -1,6 +1,6 @@
+import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:cross_file/cross_file.dart';
 
 part 'media_service.g.dart';
 
@@ -16,8 +16,8 @@ class MediaService {
       final files = <XFile>[];
       for (final file in result.files) {
         if (allowedExtensions.contains(file.extension)) {
-          /// TODO ( Izn ur Rehman ) : Fix this
-          files.add(XFile(file.path!, name: file.name));
+          /// ✅ TODO ( Izn ur Rehman ) : Fix this
+          files.add(file.xFile);
         }
       }
       return files;

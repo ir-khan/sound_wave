@@ -8,4 +8,6 @@ class PlayPause extends _$PlayPause {
   bool build() => true;
 
   void setValue(bool newValue) => state = newValue;
+
+  void toggle() => state = !state;
 }

@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sound_wave/src/features/waves/data/model/media.dart';
-import 'package:sound_wave/src/features/waves/presentations/providers/pick_media_provider.dart';
+
+import '../../../../core/services/media_service.dart';
 
 part 'media_list_provider.g.dart';
 
@@ -12,7 +13,7 @@ class MediaList extends _$MediaList {
   }
 
   void pickMedia() async {
-    final newState = await ref.read(pickMediaProvider.future);
+    final newState = await ref.read(mediaServiceProvider).pickMedia();
     state = [
       ...state,
       ...newState.map((media) => Media(name: media.name, path: media.path)),

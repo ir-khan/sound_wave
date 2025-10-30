@@ -16,6 +16,7 @@ class PlayerWidget extends StatelessWidget {
     required this.onSeekForward,
     required this.onPlayPause,
     required this.onChanged,
+    required this.onComplete,
   });
 
   final Media media;
@@ -25,6 +26,7 @@ class PlayerWidget extends StatelessWidget {
   final VoidCallback onSeekForward;
   final VoidCallback onPlayPause;
   final void Function(double)? onChanged;
+  final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +34,7 @@ class PlayerWidget extends StatelessWidget {
       spacing: 10,
       children: [
         Text(media.name.toUpperCase()),
-        AudioProgressBar(onChanged: onChanged),
+        AudioProgressBar(onChanged: onChanged, onComplete: onComplete),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           spacing: 15,

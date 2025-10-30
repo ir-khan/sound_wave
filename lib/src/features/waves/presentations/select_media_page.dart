@@ -1,21 +1,15 @@
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:audio_flux/audio_flux.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_recorder/flutter_recorder.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_soloud/flutter_soloud.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:sound_wave/src/features/waves/presentations/providers/audio_progress_provider.dart';
+import 'package:sound_wave/src/features/waves/presentations/providers/audio_player_controller.dart';
+import 'package:sound_wave/src/features/waves/presentations/providers/audio_recording_controller.dart';
 import 'package:sound_wave/src/features/waves/presentations/providers/media_list_provider.dart';
-import 'package:sound_wave/src/features/waves/presentations/providers/play_pause_provider.dart';
 import 'package:sound_wave/src/features/waves/presentations/widget/icon_container.dart';
-import 'package:sound_wave/src/mixins/media_query_mixin.dart';
 
+import '../../../mixins/media_query_mixin.dart';
 import '../data/model/media.dart';
 import 'widget/player_widget.dart';
 
@@ -28,105 +22,16 @@ class SelectMediaPage extends ConsumerStatefulWidget {
 
 class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
     with MediaQueryMixin {
-  final _soLoud = SoLoud.instance;
-  final _recorder = Recorder.instance;
   Media? _selectedMedia;
-  AudioSource? _audioSource;
-  SoundHandle? _handle;
-  String? _recordedFilePath;
-
-  @override
-  void initState() {
-    super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    try {
-      await _soLoud.init(bufferSize: 1024, channels: Channels.stereo);
-      _soLoud.setVisualizationEnabled(true);
-      await _recorder.init(
-        sampleRate: 44100,
-        format: PCMFormat.f32le,
-        channels: RecorderChannels.mono,
-      );
-    } catch (e) {
-      log('Init: $e');
-    }
-  }
-
-  Future<void> _play(String sourcePath) async {
-    try {
-      await _soLoud.disposeAllSources();
-      _audioSource = await _soLoud.loadFile(sourcePath, mode: LoadMode.memory);
-      _handle = await _soLoud.play(_audioSource!);
-    } on SoLoudNotInitializedException catch (e) {
-      log('Audio Play: $e');
-    } finally {
-      ref.read(playPauseProvider.notifier).setValue(true);
-      ref
-          .read(audioProgressProvider.notifier)
-          .startTracking(
-            soLoud: _soLoud,
-            handle: _handle!,
-            duration: _soLoud.getLength(_audioSource!),
-          );
-    }
-  }
-
-  Future<void> _recordUserAudio() async {
-    try {
-      _soLoud.disposeAllSources();
-      final granted = await _getMicrophonePermission();
-      if (!granted) return;
-      _recordedFilePath =
-          '${await _getPathToStorage()}${Platform.pathSeparator}${DateTime.now().millisecond}';
-      _recorder.start();
-      _recorder.startRecording(completeFilePath: _recordedFilePath!);
-    } catch (e) {
-      log('Record Audio: $e');
-    }
-  }
-
-  Future<void> _onButtonClickPlay() async {
-    try {
-      await _soLoud.play(await _soLoud.loadAsset('assets/sounds/sound1.wav'));
-    } catch (e) {
-      log('Click Sound: $e');
-    }
-  }
-
-  /// TODO ( Izn ur Rehman ) : Specify types of Variable in each and every case
-  void _seekAudio({required isForward}) {
-    if (_handle == null || _audioSource == null) return;
-    final currentPosition = _soLoud.getPosition(_handle!);
-    final maxDuration = _soLoud.getLength(_audioSource!);
-    final seek = Duration(seconds: isForward ? 5 : -5);
-    var target = currentPosition + seek;
-    if (!isForward && target <= Duration.zero) {
-      target = Duration.zero;
-    } else if (isForward && target >= maxDuration) {
-      target = maxDuration;
-    }
-    _soLoud.seek(_handle!, target);
-  }
-
-  @override
-  void dispose() {
-    if (_handle != null) {
-      _soLoud.stop(_handle!);
-    }
-    if (_audioSource != null) {
-      _soLoud.disposeSource(_audioSource!);
-    }
-    _soLoud.disposeAllSources();
-    _soLoud.deinit();
-    _recorder.deinit();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
+    final audioPlayerController = ref.read(
+      audioPlayerControllerProvider.notifier,
+    );
+    final audioRecordingController = ref.read(
+      audioRecordingControllerProvider.notifier,
+    );
     final media = ref.watch(mediaListProvider);
     return Scaffold(
       appBar: AppBar(title: Text('Music Player')),
@@ -136,21 +41,21 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
           if (_selectedMedia != null)
             Column(
               children: [
-                /// TODO ( Izn ur Rehman ) : The Audio Flux is not Displaying
+                /// ✅ TODO ( Izn ur Rehman ) : The Audio Flux is not Displaying
                 SizedBox(
+                  width: size.width,
                   height: size.height * 0.35,
                   child: AudioFlux(
                     dataSource: DataSources.soloud,
                     fluxType: FluxType.waveform,
                     modelParams: ModelParams(
-                      audioScale: 1,
-                      backgroundColor: Colors.blueGrey,
-                      barColor: Colors.white70,
-                      waveformParams: WaveformPainterParams(),
-                      shaderParams: ShaderParams(
-                        shaderName: 'Frequency Visualization',
-                        shaderPath:
-                            'assets/shaders/frequency_visualization.frag',
+                      audioScale: 0.55,
+                      backgroundColor: Colors.transparent,
+                      barColor: Colors.red,
+                      waveformParams: WaveformPainterParams(
+                        barsWidth: 2,
+                        barSpacingScale: 0.55,
+                        barRadius: 0,
                       ),
                     ),
                   ),
@@ -158,56 +63,68 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
                 PlayerWidget(
                   media: _selectedMedia!,
                   onTapSkipPrevious: (value) {
-                    /// TODO ( Izn ur Rehman ) : If I started a single file and click on previous button the audio is not getting restarted
-                    _onButtonClickPlay();
+                    /// ✅ TODO ( Izn ur Rehman ) : If I started a single file and click on previous button the audio is not getting restarted
+                    audioPlayerController.onButtonClickPlay();
                     final index = media.indexOf(value);
-                    if (index == 0) return;
-                    _selectedMedia = media[index - 1];
-                    _play(_selectedMedia!.path);
+                    if (index == 0) {
+                      _selectedMedia = media[media.length - 1];
+                    } else {
+                      _selectedMedia = media[index - 1];
+                    }
+
+                    audioPlayerController.play(_selectedMedia!.path);
                     if (!mounted) return;
                     setState(() {});
                   },
                   onTapSkipNext: (value) {
-                    _onButtonClickPlay();
+                    audioPlayerController.onButtonClickPlay();
                     final index = media.indexOf(value);
-                    if (index == media.length - 1) return;
-                    _selectedMedia = media[index + 1];
-                    _play(_selectedMedia!.path);
+                    if (index == media.length - 1) {
+                      _selectedMedia = media[0];
+                    } else {
+                      _selectedMedia = media[index + 1];
+                    }
+                    audioPlayerController.play(_selectedMedia!.path);
                     if (!mounted) return;
                     setState(() {});
                   },
-                  onPlayPause: () async {
-                    _onButtonClickPlay();
-                    ref
-                        .read(playPauseProvider.notifier)
-                        .setValue(!ref.read(playPauseProvider));
-                    _soLoud.pauseSwitch(_handle!);
+                  onPlayPause: () {
+                    audioPlayerController.onButtonClickPlay();
+                    audioPlayerController.togglePlayPause();
                   },
                   onSeekBackward: () {
-                    _onButtonClickPlay();
-                    _seekAudio(isForward: false);
+                    audioPlayerController.onButtonClickPlay();
+                    audioPlayerController.seekAudio(isForward: false);
                   },
                   onSeekForward: () {
-                    _onButtonClickPlay();
-                    _seekAudio(isForward: true);
+                    audioPlayerController.onButtonClickPlay();
+                    audioPlayerController.seekAudio(isForward: true);
                   },
                   onChanged: (value) =>
-                      _soLoud.seek(_handle!, Duration(seconds: value.toInt())),
+                      audioPlayerController.seekToSeconds(value.toInt()),
+                  onComplete: () {
+                    final index = media.indexOf(_selectedMedia!);
+                    if (index == media.length - 1) {
+                      _selectedMedia = media[0];
+                    } else {
+                      _selectedMedia = media[index + 1];
+                    }
+                    audioPlayerController.play(_selectedMedia!.path);
+                    if (!mounted) return;
+                    setState(() {});
+                  },
                 ),
               ],
             ),
           if (media.isEmpty)
-            /// TODO ( Izn ur Rehman ) : Optimize this widget tree
-            SizedBox(
-              width: size.width,
-              child: Text(
-                'Please select media from your device.',
-                textAlign: TextAlign.center,
-              ),
+            /// ✅ TODO ( Izn ur Rehman ) : Optimize this widget tree
+            Text(
+              'Please select media from your device.',
+              textAlign: TextAlign.center,
             ),
           ElevatedButton(
             onPressed: () async {
-              _onButtonClickPlay();
+              audioPlayerController.onButtonClickPlay();
               await HapticFeedback.vibrate();
               ref.read(mediaListProvider.notifier).pickMedia();
             },
@@ -221,35 +138,34 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
               children: [
                 ElevatedButton(
                   onPressed: () async {
-                    _onButtonClickPlay();
+                    audioPlayerController.onButtonClickPlay();
                     await HapticFeedback.vibrate();
-                    await _recordUserAudio();
+                    await audioPlayerController.disposeAllSources();
+                    await audioRecordingController.recordUserAudio();
                   },
                   child: Text('Record Audio'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    _onButtonClickPlay();
+                    audioPlayerController.onButtonClickPlay();
                     await HapticFeedback.vibrate();
-                    _recorder.stopRecording();
-                    _recorder.stop();
+                    await audioRecordingController.stopRecordingAudio();
                   },
                   child: Text('Stop Recording'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    _onButtonClickPlay();
+                    audioPlayerController.onButtonClickPlay();
                     await HapticFeedback.vibrate();
-                    if (_recordedFilePath == null) return;
+                    final filePath = audioRecordingController.getFilePath();
+                    if (filePath == null) return;
                     _selectedMedia = Media(
-                      name: _recordedFilePath!
-                          .split(Platform.pathSeparator)
-                          .last,
-                      path: _recordedFilePath!,
+                      name: filePath.split(Platform.pathSeparator).last,
+                      path: filePath,
                     );
                     if (!mounted) return;
                     setState(() {});
-                    await _play(_recordedFilePath!);
+                    audioPlayerController.play(filePath);
                   },
                   child: Text('Play Audio'),
                 ),
@@ -265,13 +181,13 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
                     selected: _selectedMedia == med,
                     selectedColor: Colors.red,
                     onTap: () async {
-                      /// TODO ( Izn ur Rehman ) : The audio is not getting played when I tapped on a selected file
+                      /// ✅ TODO ( Izn ur Rehman ) : The audio is not getting played when I tapped on a selected file
                       /// It gives me this error : SoLoudFileLoadFailedException: File found, but could not be loaded! Could be a permission error or the file is corrupted. (on the C++ side).
                       await HapticFeedback.vibrate();
-                      _onButtonClickPlay();
+                      audioPlayerController.onButtonClickPlay();
                       _selectedMedia = med;
                       if (_selectedMedia == null) return;
-                      _play(_selectedMedia!.path);
+                      audioPlayerController.play(_selectedMedia!.path);
                       if (!mounted) return;
                       setState(() {});
                     },
@@ -292,25 +208,8 @@ class _SelectMediaPageState extends ConsumerState<SelectMediaPage>
   }
 }
 
-Future<bool> _getMicrophonePermission() async {
-  if (defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS ||
-      defaultTargetPlatform == TargetPlatform.macOS) {
-    final value = await Permission.microphone.request().isGranted;
-    if (value) return true;
-    final permission = await Permission.microphone.request();
-    return permission.isGranted;
-  }
-  return false;
-}
-
-Future<String> _getPathToStorage() async {
-  final tempDir = await getTemporaryDirectory();
-  return tempDir.path;
-}
-
-/// TODO ( Izn ur Rehman ) : It does not auto play the second audio after completion of First video
-/// TODO ( Izn ur Rehman ) : The Audio is Finished but the Play Pause icon is still indicates that audio is still playing
-/// TODO ( Izn ur Rehman ) : Create a provider that will responsible for Recording
-/// TODO ( Izn ur Rehman ) : Create a Provider That will responsible for Playing Audio and all it's functionalities
+/// ✅ TODO ( Izn ur Rehman ) : It does not auto play the second audio after completion of First video
+/// ✅ TODO ( Izn ur Rehman ) : The Audio is Finished but the Play Pause icon is still indicates that audio is still playing
+/// ✅ TODO ( Izn ur Rehman ) : Create a provider that will responsible for Recording
+/// ✅ TODO ( Izn ur Rehman ) : Create a Provider That will responsible for Playing Audio and all it's functionalities
 ///

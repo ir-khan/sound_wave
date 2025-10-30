@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:sound_wave/src/features/waves/presentations/select_media_page.dart';
 
+import 'features/app_startup/presentation/app_startup_page.dart';
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -38,7 +40,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.yellow),
       ),
-      home: const SelectMediaPage(),
+      home: AppStartupPage(onLoaded: (_) => const SelectMediaPage()),
     );
   }
 }
